@@ -40,6 +40,21 @@
 #	‘CXXFLAGS_DEBUG’
 #
 #	Targets:
+#	- [all]: The main and first (default) build target, for IDE = ECLIPSE or NO_IDE = run/debug, this can be used by default for building
+#	- [clean]: the main clean target, for IDE = ECLIPSE or NO_IDE = run/debug, this can be used by default, 
+#	the clean target is build-context based, e.g if NO_IDE = debug, clean target will clean debug directory only,
+#	also, if IDE = ECLIPSE and BUILD_MODE = run, will clean build/default directory only
+#	and for IDE = CODE_BLOCKS, and MAKECMDGOALS = cleanRelease, will clean bin/Release and obj/Release only
+#	- [Release]: Is a special target for IDE = CODE_BLOCKS mode, it will build the project in bin/Release and obj/Release
+#	- [Debug]: Is a special target for IDE = CODE_BLOCKS mode, it will build the project in bin/Debug and obj/Debug
+#	- [cleanRelease]: Is a special target for IDE = CODE_BLOCKS mode, it will clean bin/Release and Obj/release
+#	- [cleanDebug]: Is a special target for IDE = CODE_BLOCKS mode, it will clean bin/Debug and obj/Debug
+#	- [cleanAll]: This target will clean all known builds, such as: build/ directory for ECLIPSE and NO_IDE,
+#	and bin/ and obj/ dirs for CODE_BLOCKS
+#	- [check]: internal usage
+#	- [test]: internal usage
+#	- []
+#	-
 #	- The main build target is ‘all’, and for cleaning is ‘clean’, they both relays on
 #	current build type, e.g: if NO_IDE=debug, ‘clean’ will clean only debug directory
 #	- Eclipse CDT will invoke first target in the file, which is ‘all’, and for clean will invoke ‘clean’
@@ -62,16 +77,17 @@
 
 
 ################# for IDE's, use ECLIPSE or CODE_BLOCKS
-IDE:=CODE_BLOCKS
+#IDE:=CODE_BLOCKS
 #IDE:=ECLIPSE
 ################# for non-IDE's, specify NO_IDE, either run or debug
-#NO_IDE:=run
+NO_IDE:=run
 #NO_IDE:=debug
 ################
 CXX := g++
 INCLUDE_LIBRARY := glfw3 glew
 CXXFLAGS_DEBUG := -g -Wall -Wextra -Wno-unused-parameter 
-CXXFLAGS_BUILD := -O0 -Wall -Wextra -Wno-unused-parameter
+CXXFLAGS_BUILD := -O0 -save-temps=obj -Wall -Wextra -Wno-unused-parameter
+BASH_SHELL := /bin/bash
 ################
 ################
 ################
@@ -119,15 +135,15 @@ INCLUDE_LIBRARY_LIBS_FLAGS := $(shell pkg-config --libs $(INCLUDE_LIBRARY))
 #####
 ##### DEFAULT (NO_IDE) SETUP
 #####
-DEFAULT_CLEAN_DIRS :=
 DEFAULT_BUILD_DIR := $(PROJECT_DIR)/$(BUILD_DIR_NAME)
-
+DEFAULT_CLEAN_DIRS :=
 ifeq ($(NO_IDE),run)
 	CXXFLAGS += $(CXXFLAGS_BUILD)
 else ifeq ($(NO_IDE),debug)
 	DEFAULT_BUILD_DIR := $(PROJECT_DIR)/$(DEBUG_DIR_NAME)
 	CXXFLAGS += $(CXXFLAGS_DEBUG)
 endif
+
 
 DEFAULT_CLEAN_DIRS := $(DEFAULT_BUILD_DIR)
 DEFAULT_BUILD_OBJ_DIR := $(DEFAULT_BUILD_DIR)/$(OBJ_DIR_NAME)
@@ -144,21 +160,17 @@ INCLUDE_DIR := $(PROJECT_DIR)/include
 INCLUDE_DIR_FLAGS := $(addprefix -I,$(INCLUDE_DIR))
 CPPFLAGS ?= $(INCLUDE_DIR_FLAGS)
 EXCEPTION_MSG:=
-
+EXECUTABLE_BASH_SCRIPT_NAME := $(NO_IDE)
 
 ifeq ($(IDE),ECLIPSE)
 	BUILD_MODE ?= run
+	EXECUTABLE_BASH_SCRIPT_NAME := $(BUILD_MODE)
 	ifeq ($(BUILD_MODE),run)
 		DEFAULT_BUILD_DIR := $(DEFAULT_BUILD_DIR)/default
 		CXXFLAGS += $(CXXFLAGS_BUILD)
 	else ifeq ($(BUILD_MODE),debug)
 		DEFAULT_BUILD_DIR := $(DEFAULT_BUILD_DIR)/make.debug.linux.x86_64
 		CXXFLAGS += $(CXXFLAGS_DEBUG)
-	else ifeq ($(BUILD_MODE),linuxtools)
-		CFLAGS += -g -pg -fprofile-arcs -ftest-coverage
-		LDFLAGS += -pg -fprofile-arcs -ftest-coverage
-		EXTRA_CLEAN += $(PROJECT_NAME).gcda $(PROJECT_NAME).gcno $(PROJECT_ROOT)gmon.out
-		EXTRA_CMDS = rm -rf $(PROJECT_NAME).gcda
 	else
 		EXCEPTION_MSG:=ECLIPSE BUILD_MODE=$(BUILD_MODE) not supported by this Makefile, you can use [run, debug or linuxtools]
 	endif
@@ -174,11 +186,13 @@ else ifeq ($(IDE),CODE_BLOCKS)
 		TEMP_OBJ_DIR_HOLDER := $(PROJECT_DIR)/obj/Release
 		DEFAULT_BUILD_TARGET := $(DEFAULT_BUILD_DIR)/$(TARGET_FILE_NAME)
 		CXXFLAGS += $(CXXFLAGS_BUILD)
+		EXECUTABLE_BASH_SCRIPT_NAME := run
 	else ifeq ($(MAKECMDGOALS),$(filter $(MAKECMDGOALS),Debug cleanDebug))
 		DEFAULT_BUILD_DIR := $(PROJECT_DIR)/bin/Debug
 		TEMP_OBJ_DIR_HOLDER := $(PROJECT_DIR)/obj/Debug
 		DEFAULT_BUILD_TARGET := $(DEFAULT_BUILD_DIR)/$(TARGET_FILE_NAME)
 		CXXFLAGS += $(CXXFLAGS_DEBUG)
+		EXECUTABLE_BASH_SCRIPT_NAME := debug
 	else
 		EXCEPTION_MSG:=CODE_BLOCK target=$(MAKECMDGOALS) not supported by this Makefile, you can use [Release, Debug, cleanRelease and cleanDebug] for the main time this Makefile does not supports multiple targets execution, if you have requested more than one, please retry with one target at time
 	endif
@@ -190,9 +204,10 @@ endif
 #####
 
 
+DEFAULT_CLEAN_ALL_DIRS := $(PROJECT_DIR)/$(BUILD_DIR_NAME) $(PROJECT_DIR)/$(DEBUG_DIR_NAME) $(PROJECT_DIR)/bin $(PROJECT_DIR)/obj
+
 
 all: check $(DEFAULT_BUILD_TARGET)
-
 debug: all
 
 ################# CODE::BLOCKS SPECIFIC SETUP
@@ -200,6 +215,11 @@ Release: all
 Debug: debug
 cleanRelease: clean
 cleanDebug: clean
+createBashScript:
+	$(eval run_script:=$(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME))
+	$(shell echo "#!$(BASH_SHELL)\n$(DEFAULT_BUILD_TARGET)\n" > $(run_script))
+	$(shell sudo chmod +x $(run_script))
+	@echo "executable bash script created: $(run_script)"
 #####
 #####
 #####
@@ -286,6 +306,9 @@ test: check
 
 .PHONY: all clean
 clean:
-	rm -rf $(DEFAULT_CLEAN_DIRS)
+	rm -rf $(DEFAULT_CLEAN_DIRS) $(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME)
+	
+cleanAll:
+	rm -rf $(DEFAULT_CLEAN_ALL_DIRS) $(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME)
 
 
