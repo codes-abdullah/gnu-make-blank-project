@@ -1,31 +1,31 @@
 ###################################################
 #	
 #	Author : Abdullah Aldokhi
-#
-# 	Usage: (Tested on Linux systems)
+#	Github: https://github.com/codes-abdullah
+# 	(Tested on Linux systems)
 #	
 #	While learning C++, I struggled with:
 #	- Adding libraries manually to Eclipse CDT, which is nightmare.
 #	- Eclipse CDT does not generate Makefile with new projects.
 #	- I’ve been spoiled by Java and it’s tools for long time, debugging was a click, never thought
 #	 that debugging in C++ requires different flags, which means different binary, which means
-#	different launch location to make Eclipse CDT and Code::Blocks debug the app interactively.
+#	different launch location to make IDE's such as Eclipse CDT and Code::Blocks able to debug the app interactively.
 #	- In Java, we had packages which organized our projects in a fancy way, in C++, most of the
 #	source projects I’ve seen used one single directory for all source files, and probably another
-#	far-away directory for header files, so source nested files/dirs are very uncommon in C++.
+#	far-away directory for header files (in project), so source nested files/dirs are not common in C++.
 #	
-#	As Java spoiled and well organized developer, I could not leave it like this
-#	Which force me to learn gnu-make that I was never ever wanted to work with, hoa!!
+#	As Java spoiled and well organized developer, I could not like my projects to be missy
+#	which force me to learn gnu-make which I was never ever wanted to work with, hoa!!
 #	
 #	
-#	So:
+#	So I spent sometime learning the basics of gnu-make and cameup with this script file.
 #	This file has full support for 2 modes to resolve all mentioned cons above:
 #	
 #	- Declare a variable named NO_IDE with value of ‘run’ or ‘debug’ for regular projects on any
 #	text editor application (remove single quotes in values)
 #	- Declare a variable named IDE with value of ‘ECLIPSE’ or ‘CODE_BLOCKS’ for Eclipse
 #	CDT or Code::Blocks projects accordingly (remove single quotes in values)
-#	- You can’t have both to be declared
+#	- You can’t have both to be declared (IDE and NO_IDE)
 #	
 #
 #	Futures:
@@ -51,21 +51,16 @@
 #	- [cleanDebug]: Is a special target for IDE = CODE_BLOCKS mode, it will clean bin/Debug and obj/Debug
 #	- [cleanAll]: This target will clean all known builds, such as: build/ directory for ECLIPSE and NO_IDE,
 #	and bin/ and obj/ dirs for CODE_BLOCKS
+#	- [createRunScript]: Create bash script named run/debug (build context based) to run application, the output of the
+#	run/debug script is the project root dir, invoking this target requires sudo password to setup permissions
+#	- [createBuildAndRunScript]: Create bash script named run/debug (build context based) to build and run application.
 #	- [check]: internal usage
 #	- [test]: internal usage
-#	- []
 #	-
-#	- The main build target is ‘all’, and for cleaning is ‘clean’, they both relays on
-#	current build type, e.g: if NO_IDE=debug, ‘clean’ will clean only debug directory
-#	- Eclipse CDT will invoke first target in the file, which is ‘all’, and for clean will invoke ‘clean’
-#	- Eclipse CDT have special variable called BUILD_MODE, which can be used to determent
-#	if eclipse requiring build or debug modes, that will be handled by this Makefile internally.
-#	- Code::blocks IDE has special named targets by default, ‘Release’ ‘cleanRelease’
-#	‘Debug’ and ‘cleanDebug’.
-#	- NO_IDE mode will invoke first target by default.
+#	-
 #
 #	Bugs and cons:
-#	- For NO_IDE and for IDE=ECLIPSE, this script supports multi target execution at one, 
+#	- For NO_IDE and for IDE=ECLIPSE, this script supports multi target execution at once, 
 #	e.g: make clean all
 #	but for IDE=CODE_BLOCKS mode, only single target is supported
 #	- The script will compile every single source file individually, that comes as tread-off with
@@ -215,12 +210,17 @@ Release: all
 Debug: debug
 cleanRelease: clean
 cleanDebug: clean
-createBashScript:
+createRunScript:
 	$(eval run_script:=$(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME))
-	$(shell echo "#!$(BASH_SHELL)\n$(DEFAULT_BUILD_TARGET)\n" > $(run_script))
+	$(shell echo "#!$(BASH_SHELL)\n$(DEFAULT_BUILD_TARGET)\n" > $(run_script))	
 	$(shell sudo chmod +x $(run_script))
 	@echo "executable bash script created: $(run_script)"
-#####
+##### clear && make -j all && clear && $(DEFAULT_BUILD_TARGET)
+createBuildAndRunScript:
+	$(eval run_script:=$(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME))
+	$(shell echo "#!$(BASH_SHELL)\n clear && make -j all && clear && $(DEFAULT_BUILD_TARGET)" > $(run_script))	
+	$(shell sudo chmod +x $(run_script))
+	@echo "executable bash script created: $(run_script)"
 #####
 #####
 
