@@ -212,17 +212,40 @@ cleanRelease: clean
 cleanDebug: clean
 createRunScript:
 	$(eval run_script:=$(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME))
-	$(shell echo "#!$(BASH_SHELL)\n$(DEFAULT_BUILD_TARGET)\n" > $(run_script))	
+	$(shell echo "#!$(BASH_SHELL)\n$(DEFAULT_BUILD_TARGET)\n" >> $(run_script))
 	$(shell sudo chmod +x $(run_script))
 	@echo "executable bash script created: $(run_script)"
 ##### clear && make -j all && clear && $(DEFAULT_BUILD_TARGET)
 createBuildAndRunScript:
 	$(eval run_script:=$(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME))
-	$(shell echo "#!$(BASH_SHELL)\n clear && make -j all && clear && $(DEFAULT_BUILD_TARGET)" > $(run_script))	
+	$(shell rm -f $(run_script))
+	$(shell echo "clear" >> $(run_script))
+	$(shell echo "echo \"####################################\"" >> $(run_script))
+	$(shell echo "echo \`date\`" >> $(run_script))
+	$(shell echo "echo \"\"" >> $(run_script))
+	$(shell echo "echo \"\"" >> $(run_script))
+	$(shell echo "start_millis=\`date +%s%N | cut -b1-13\`" >> $(run_script))
+	$(shell echo "make all" >> $(run_script))
+	$(shell echo "end_millis=\`date +%s%N | cut -b1-13\`" >> $(run_script))
+	$(shell echo "total_millis=\$$(( \$$end_millis-\$$start_millis ))" >> $(run_script))
+	$(shell echo "echo \"\"" >> $(run_script))
+	$(shell echo "echo \"\"" >> $(run_script))
+	$(shell echo "echo \"Build completed in \$${total_millis} millis\"" >> $(run_script))
+	$(shell echo "echo \"####################################\"" >> $(run_script))
+	$(shell echo "read -r -p \"Run binary $(DEFAULT_BUILD_TARGET)?? [y/N] \" response" >> $(run_script))
+	$(shell echo "if [[ \$$response =~ ^([yY][eE][sS]|[yY]) || \$$response == '' ]]" >> $(run_script))
+	$(shell echo "then" >> $(run_script))
+	$(shell echo "clear && $(DEFAULT_BUILD_TARGET)" >> $(run_script))
+	$(shell echo "fi" >> $(run_script))	
 	$(shell sudo chmod +x $(run_script))
-	@echo "executable bash script created: $(run_script)"
+	@echo "created: $(run_script)"
 #####
 #####
+
+
+
+
+
 
 
 
@@ -328,9 +351,9 @@ test: check
 
 .PHONY: all clean
 clean:
-	rm -rf $(DEFAULT_CLEAN_DIRS) $(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME)
+	rm -rf $(DEFAULT_CLEAN_DIRS)
 	
 cleanAll:
-	rm -rf $(DEFAULT_CLEAN_ALL_DIRS) $(PROJECT_DIR)/$(EXECUTABLE_BASH_SCRIPT_NAME)
+	rm -rf $(DEFAULT_CLEAN_ALL_DIRS)
 
 
