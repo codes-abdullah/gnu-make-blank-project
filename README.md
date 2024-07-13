@@ -1,7 +1,6 @@
 
 	
-	Author : Abdullah Aldokhi
-	Github: https://github.com/codes-abdullah
+	https://github.com/codes-abdullah
  	(Tested on Linux systems)
 	
 	While learning C++, I struggled with:
